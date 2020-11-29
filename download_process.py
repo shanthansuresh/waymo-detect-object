@@ -25,6 +25,36 @@ def create_tf_example(filename, encoded_jpeg, annotations):
     """
 
     # TODO: Implement function to convert the data
+    #Decode the jpeg
+    #Ref: https://github.com/petewarden/tensorflow_makefile/blob/master/tensorflow/g3doc/api_docs/python/functions_and_classes/tf.image.decode_jpeg.md
+    img_decoded = tf.image.decode_jpeg(encoded_jpeg, channels=3)
+    img_shape = img_decoded.shape
+    print(f'Image shape = {img_decoded.shape}')
+
+    height = img_shape[0]
+    width =  img_shape[1]
+    image_format = b'jpg'
+
+    #Iterate through the labels
+    xmins = []
+    xmaxs = []
+    ymins = []
+    ymaxs = []
+    classes_text = []
+    classes = []
+    for label in annotations:
+        xmins.append(label.box.center_x - 0.5 * label.box.length)
+        xmaxs.append(label.box.center_x + 0.5 * label.box.length) 
+        ymins.append(label.box.center_y - 0.5 * label.box.width)
+        ymaxs.append(label.box.center_y + 0.5 * label.box.width)
+        #Append byteslist instead of string
+        classes_text.append(bytes(label.id, 'utf-8'))
+        classes.append(label.type) 
+
+    #convert filename string into bytes
+    #Ref: https://techtutorialsx.com/2018/02/04/python-converting-string-to-bytes-object/
+    #Ref: https://github.com/tensorflow/tensorflow/issues/17674
+    filename = bytes(filename, 'utf-8')
 
     tf_example = tf.train.Example(features=tf.train.Features(feature={
         'image/height': int64_feature(height),
