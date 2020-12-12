@@ -10,6 +10,8 @@ from object_detection.utils.config_util import get_configs_from_pipeline_file
 from object_detection.utils.label_map_util import create_category_index_from_labelmap
 from object_detection.utils import visualization_utils as viz_utils
 
+from utils import *
+import matplotlib.animation as animation
 
 def main(labelmap_path, model_path, tf_record_path, config_path, output_path):
     """
@@ -29,7 +31,7 @@ def main(labelmap_path, model_path, tf_record_path, config_path, output_path):
 
     # Load saved model and build the detection function
     logger.info(f'Loading model from {model_path}')
-    detect_fn = tf.saved_model.load(model_path)
+    detect_fn = tf.saved_model.load_v2(model_path)
 
     # open config file
     logger.info(f'Loading config from {config_path}')
@@ -60,6 +62,7 @@ def main(labelmap_path, model_path, tf_record_path, config_path, output_path):
         
         # tensor -> numpy arr, remove one dimensions
         num_detections = int(detections.pop('num_detections'))
+        print(f'num_detections={num_detections}')
         detections = {key: value[0, ...].numpy()
                     for key, value in detections.items()}
         detections['num_detections'] = num_detections
@@ -91,7 +94,8 @@ def main(labelmap_path, model_path, tf_record_path, config_path, output_path):
         image = images[idx]
         im_obj.set_data(image)
         
-    anim = animation.FuncAnimation(f, animate, frames=198)
+    #anim = animation.FuncAnimation(f, animate, frames=198)
+    anim = animation.FuncAnimation(f, animate, frames=100)
     anim.save(output_path, fps=5, dpi=300)
 
 
