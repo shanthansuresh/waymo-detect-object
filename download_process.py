@@ -43,10 +43,15 @@ def create_tf_example(filename, encoded_jpeg, annotations):
     classes_text = []
     classes = []
     for label in annotations:
-        xmins.append(label.box.center_x - 0.5 * label.box.length)
-        xmaxs.append(label.box.center_x + 0.5 * label.box.length) 
-        ymins.append(label.box.center_y - 0.5 * label.box.width)
-        ymaxs.append(label.box.center_y + 0.5 * label.box.width)
+        xmin_norm = (label.box.center_x - 0.5 * label.box.length)/width
+        xmax_norm = (label.box.center_x + 0.5 * label.box.length)/width
+        ymin_norm = (label.box.center_y - 0.5 * label.box.width)/height
+        ymax_norm = (label.box.center_y + 0.5 * label.box.width)/height
+        #print(f'xmin_norm={xmin_norm}, xmax_norm={xmax_norm}, ymin_norm={ymin_norm}, ymax_norm={ymax_norm}')
+        xmins.append(xmin_norm)
+        xmaxs.append(xmax_norm) 
+        ymins.append(ymin_norm)
+        ymaxs.append(ymax_norm)
         #Append byteslist instead of string
         classes_text.append(bytes(label.id, 'utf-8'))
         classes.append(label.type) 
@@ -88,13 +93,15 @@ def download_tfr(filepath, temp_dir):
     dest = os.path.join(temp_dir, 'raw')
     os.makedirs(dest, exist_ok=True)
 
+    """
     # download the tf record file
     cmd = ['gsutil', 'cp', filepath, f'{dest}']
     logger.info(f'Downloading {filepath}')
     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:
         logger.error(f'Could not download file {filepath}') 
-    
+    """
+
     filename = os.path.basename(filepath)
     local_path = os.path.join(dest, filename)
     return local_path
@@ -131,7 +138,7 @@ def download_and_process(filename, temp_dir, data_dir):
     # need to re-import the logger because of multiprocesing
     logger = get_module_logger(__name__)
     local_path = download_tfr(filename, temp_dir)
-    #process_tfr(local_path, data_dir)
+    process_tfr(local_path, data_dir)
     # remove the original tf record to save space
     logger.info(f'Deleting {local_path}')
     #os.remove(local_path)
