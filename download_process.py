@@ -9,6 +9,13 @@ from PIL import Image
 from psutil import cpu_count
 
 from utils import *
+from object_detection.utils import dataset_util, label_map_util
+
+label_map = label_map_util.load_labelmap('./label_map.pbtxt')
+label_map_dict = label_map_util.get_label_map_dict(label_map)
+t2idict = {y:x for x,y in label_map_dict.items()}
+def class_text_to_int(text):
+    return t2idict[text]
 
 
 def create_tf_example(filename, encoded_jpeg, annotations):
@@ -25,42 +32,35 @@ def create_tf_example(filename, encoded_jpeg, annotations):
     """
 
     # TODO: Implement function to convert the data
-    #Decode the jpeg
-    #Ref: https://github.com/petewarden/tensorflow_makefile/blob/master/tensorflow/g3doc/api_docs/python/functions_and_classes/tf.image.decode_jpeg.md
-    img_decoded = tf.image.decode_jpeg(encoded_jpeg, channels=3)
-    img_shape = img_decoded.shape
-    print(f'Image shape = {img_decoded.shape}')
+    encoded_jpg_io = io.BytesIO(encoded_jpeg)
+    image = Image.open(encoded_jpg_io)
+    width, height = image.size
 
-    height = img_shape[0]
-    width =  img_shape[1]
-    image_format = b'jpg'
+    image_format = b'jpeg'
 
-    #Iterate through the labels
     xmins = []
     xmaxs = []
     ymins = []
     ymaxs = []
     classes_text = []
     classes = []
-    for label in annotations:
-        xmin_norm = (label.box.center_x - 0.5 * label.box.length)/width
-        xmax_norm = (label.box.center_x + 0.5 * label.box.length)/width
-        ymin_norm = (label.box.center_y - 0.5 * label.box.width)/height
-        ymax_norm = (label.box.center_y + 0.5 * label.box.width)/height
-        #print(f'xmin_norm={xmin_norm}, xmax_norm={xmax_norm}, ymin_norm={ymin_norm}, ymax_norm={ymax_norm}')
-        xmins.append(xmin_norm)
-        xmaxs.append(xmax_norm) 
-        ymins.append(ymin_norm)
-        ymaxs.append(ymax_norm)
-        #Append byteslist instead of string
-        classes_text.append(bytes(label.id, 'utf-8'))
-        classes.append(label.type) 
 
-    #convert filename string into bytes
-    #Ref: https://techtutorialsx.com/2018/02/04/python-converting-string-to-bytes-object/
-    #Ref: https://github.com/tensorflow/tensorflow/issues/17674
-    filename = bytes(filename, 'utf-8')
+    for index, row in enumerate(annotations):
 
+        xmin = row.box.center_x - row.box.length/2.0
+        xmax = row.box.center_x + row.box.length/2.0
+        ymin = row.box.center_y - row.box.width/2.0
+        ymax = row.box.center_y + row.box.width/2.0
+
+
+        xmins.append(xmin / width)
+        xmaxs.append(xmax / width)
+        ymins.append(ymin / height)
+        ymaxs.append(ymax / height)
+        classes_text.append(class_text_to_int(row.type).encode('utf8'))
+        classes.append(row.type)
+
+    filename = filename.encode('utf8')
     tf_example = tf.train.Example(features=tf.train.Features(feature={
         'image/height': int64_feature(height),
         'image/width': int64_feature(width),
@@ -75,6 +75,7 @@ def create_tf_example(filename, encoded_jpeg, annotations):
         'image/object/class/text': bytes_list_feature(classes_text),
         'image/object/class/label': int64_list_feature(classes),
     }))
+
     return tf_example
 
 
